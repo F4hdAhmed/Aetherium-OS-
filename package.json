@@ -1,0 +1,75 @@
+{
+  "name": "aetherium-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A modern, AI-native developer environment.",
+  "author": "Fahd Ahmed",
+  "type": "module",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "npm run typecheck && npm run build:electron && vite build",
+    "build:electron": "node scripts/clean-electron.mjs && tsc -p electron/tsconfig.json",
+    "test": "npm run build:electron && node --test tests/*.test.mjs",
+    "typecheck": "tsc -b --pretty false",
+    "preview": "vite preview",
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "monaco-editor": "^0.53.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "cross-env": "latest",
+    "electron": "43.4.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "wait-on": "latest"
+  },
+  "build": {
+    "appId": "com.fahdahmed.aetherium",
+    "productName": "Aetherium OS",
+    "artifactName": "Aetherium-OS-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

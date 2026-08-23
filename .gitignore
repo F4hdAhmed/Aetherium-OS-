@@ -1,0 +1,13 @@
+node_modules/
+.codex-local-tools/
+dist/
+dist-electron/
+release/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+.aetherium-qa/
