@@ -3,9 +3,11 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
+  AIFileChange,
   FileContent,
   FileTreeNode,
   GitSummary,
+  ImportedFilesResult,
   SearchMatch,
   WorkspaceInfo,
 } from '../../src/types/contracts.js';
@@ -98,6 +100,66 @@ export class WorkspaceService {
     return this.readTree();
   }
 
+  async importFiles(parentPath: string, sourcePaths: string[]): Promise<ImportedFilesResult> {
+    if (!Array.isArray(sourcePaths) || !sourcePaths.length || sourcePaths.length > 50) throw new Error('Select between 1 and 50 files.');
+    const parent = parentPath ? this.resolveSafe(parentPath) : this.requireRoot();
+    const parentStat = await fs.stat(parent);
+    if (!parentStat.isDirectory()) throw new Error('Choose a project folder as the import destination.');
+    const prepared: { target: string; relative: string; buffer: Buffer }[] = [];
+    const seen = new Set<string>();
+    for (const sourcePath of sourcePaths) {
+      const name = path.basename(sourcePath);
+      this.validateName(name);
+      const key = name.toLocaleLowerCase();
+      if (seen.has(key)) throw new Error(`More than one selected file is named ${name}.`);
+      seen.add(key);
+      const stat = await fs.stat(sourcePath);
+      if (!stat.isFile()) throw new Error(`${name} is not a regular file.`);
+      if (stat.size > 10 * 1024 * 1024) throw new Error(`${name} is larger than the 10 MB import limit.`);
+      const buffer = await fs.readFile(sourcePath);
+      if (buffer.includes(0)) throw new Error(`${name} appears to be binary. Aetherium imports text and code files only.`);
+      const target = path.join(parent, name);
+      this.assertWithinRoot(target);
+      try {
+        await fs.access(target);
+        throw new Error(`${name} already exists in the destination folder.`);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+      prepared.push({ target, relative: path.relative(this.requireRoot(), target), buffer });
+    }
+    for (const file of prepared) await fs.writeFile(file.target, file.buffer, { flag: 'wx' });
+    return { tree: await this.readTree(), imported: prepared.map((file) => file.relative) };
+  }
+
+  async applyFileChanges(changes: AIFileChange[]) {
+    if (!Array.isArray(changes) || !changes.length || changes.length > 20) throw new Error('Aether can apply between 1 and 20 files at a time.');
+    let totalBytes = 0;
+    const prepared: { absolute: string; content: string }[] = [];
+    const seen = new Set<string>();
+    for (const change of changes) {
+      if (!change || typeof change.path !== 'string' || typeof change.content !== 'string') throw new Error('Aether returned an invalid file plan.');
+      const relativePath = change.path.trim().replace(/[/\\]+/g, path.sep);
+      if (!relativePath || relativePath.endsWith(path.sep)) throw new Error('Every Aether file change needs a valid file path.');
+      const key = relativePath.toLocaleLowerCase();
+      if (seen.has(key)) throw new Error(`Aether proposed ${relativePath} more than once.`);
+      seen.add(key);
+      this.assertWritableRelativePath(relativePath);
+      const bytes = Buffer.byteLength(change.content, 'utf8');
+      if (bytes > 1024 * 1024) throw new Error(`${relativePath} exceeds the 1 MB AI file limit.`);
+      totalBytes += bytes;
+      if (totalBytes > 5 * 1024 * 1024) throw new Error('The Aether file plan exceeds the 5 MB total limit.');
+      const absolute = this.resolveSafe(relativePath);
+      await this.assertNoSymbolicLink(absolute);
+      prepared.push({ absolute, content: change.content });
+    }
+    for (const change of prepared) {
+      await fs.mkdir(path.dirname(change.absolute), { recursive: true });
+      await fs.writeFile(change.absolute, change.content, 'utf8');
+    }
+    return this.readTree();
+  }
+
   async rename(relativePath: string, nextName: string) {
     this.validateName(nextName);
     const source = this.resolveSafe(relativePath);
@@ -179,6 +241,31 @@ export class WorkspaceService {
 
   private validateName(name: string) {
     if (!name.trim() || name === '.' || name === '..' || /[\\/:*?"<>|]/.test(name)) throw new Error('Enter a valid file or folder name.');
+  }
+
+  private assertWritableRelativePath(relativePath: string) {
+    if (path.isAbsolute(relativePath)) throw new Error('Absolute paths are not accepted.');
+    const segments = relativePath.split(/[\\/]/).filter(Boolean);
+    if (!segments.length || segments.some((segment) => segment === '.' || segment === '..')) throw new Error('The file path is outside the active workspace.');
+    const protectedSegment = segments.find((segment) => ignored.has(segment) || segment === '.git');
+    if (protectedSegment) throw new Error(`Aether cannot write inside ${protectedSegment}.`);
+  }
+
+  private async assertNoSymbolicLink(target: string) {
+    const root = this.requireRoot();
+    const parts = path.relative(root, target).split(path.sep);
+    let current = root;
+    for (const part of parts) {
+      current = path.join(current, part);
+      try {
+        const stat = await fs.lstat(current);
+        if (stat.isSymbolicLink()) throw new Error('Aether cannot write through symbolic links.');
+        if (current === target && stat.isDirectory()) throw new Error('Aether cannot replace a folder with a file.');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') break;
+        throw error;
+      }
+    }
   }
 
   private startWatcher() {

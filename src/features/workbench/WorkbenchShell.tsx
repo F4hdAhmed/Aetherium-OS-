@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, type IconName } from '../../components/icons/Icon';
 import { desktop } from '../../services/desktop';
-import type { AppPreferences, FileTreeNode, GitSummary, SearchMatch, WorkspaceInfo } from '../../types/contracts';
+import type { AIFileChange, AppPreferences, FileTreeNode, GitSummary, SearchMatch, WorkspaceInfo } from '../../types/contracts';
 import type { EditorDocument } from '../editor/EditorWorkspace';
 import { SearchPanel } from '../search/SearchPanel';
 import { FileTree } from './FileTree';
@@ -121,7 +121,7 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
   };
 
   const createEntry = async (parentPath: string, kind: 'file' | 'directory') => {
-    const name = window.prompt(`New ${kind} name`);
+    const name = window.prompt(kind === 'file' ? 'New file name (include any code extension, such as app.tsx or main.py)' : 'New folder name');
     if (!name) return;
     try {
       const nextTree = kind === 'file'
@@ -130,6 +130,44 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
       setTree(nextTree);
       if (kind === 'file') void openFile([parentPath, name].filter(Boolean).join('\\'));
     } catch (error) { onNotify(error instanceof Error ? error.message : String(error), 'error'); }
+  };
+
+  const importFiles = async (parentPath: string) => {
+    try {
+      const result = await desktop.workspace.importFiles(parentPath);
+      if (!result) return;
+      setTree(result.tree);
+      if (result.imported[0]) await openFile(result.imported[0]);
+      onNotify(`Imported ${result.imported.length} file${result.imported.length === 1 ? '' : 's'}`);
+    } catch (error) { onNotify(error instanceof Error ? error.message : String(error), 'error'); }
+  };
+
+  const applyAIFileChanges = async (changes: AIFileChange[]) => {
+    const normalize = (value: string) => value.replace(/\\/g, '/').toLocaleLowerCase();
+    const affected = new Set(changes.map((change) => normalize(change.path)));
+    const dirty = documents.filter((document) => affected.has(normalize(document.path)) && document.value !== document.savedValue);
+    if (dirty.length && !window.confirm(`Aether's plan will replace unsaved edits in ${dirty.map((document) => document.path).join(', ')}. Continue?`)) {
+      throw new Error('File plan cancelled because it would replace unsaved edits.');
+    }
+    try {
+      const nextTree = await desktop.workspace.applyFileChanges(changes);
+      setTree(nextTree);
+      let nextDocuments = await Promise.all(documents.map(async (document) => {
+        if (!affected.has(normalize(document.path))) return document;
+        const file = await desktop.workspace.readFile(document.path);
+        return { ...file, value: file.content, savedValue: file.content };
+      }));
+      const first = await desktop.workspace.readFile(changes[0].path);
+      if (!nextDocuments.some((document) => normalize(document.path) === normalize(first.path))) {
+        nextDocuments = [...nextDocuments, { ...first, value: first.content, savedValue: first.content }];
+      }
+      setDocuments(nextDocuments);
+      setActivePath(first.path);
+      onNotify(`Applied Aether plan to ${changes.length} file${changes.length === 1 ? '' : 's'}`);
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : String(error), 'error');
+      throw error;
+    }
   };
 
   const renameEntry = async (node: FileTreeNode) => {
@@ -244,8 +282,8 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
         </nav>
 
         {leftVisible && <aside className="side-panel">
-          <header className="panel-header"><span>{activity === 'source' ? 'Source control' : activity}</span><div>{activity === 'explorer' && <><button title="New file" onClick={() => void createEntry('', 'file')}><Icon name="file" size={14} /></button><button title="New folder" onClick={() => void createEntry('', 'directory')}><Icon name="folder" size={14} /></button></>}<button title="Refresh" onClick={() => void refreshTree()}><Icon name="refresh" size={14} /></button></div></header>
-          {activity === 'explorer' && <><div className="workspace-label"><Icon name="chevron-down" size={11} /><strong>{workspace.name}</strong></div><FileTree nodes={tree} activePath={activePath ?? undefined} onOpen={(path) => void openFile(path)} onCreate={(parent, kind) => void createEntry(parent, kind)} onRename={(node) => void renameEntry(node)} onDelete={(node) => void deleteEntry(node)} /></>}
+          <header className="panel-header"><span>{activity === 'source' ? 'Source control' : activity}</span><div>{activity === 'explorer' && <><button title="New file" onClick={() => void createEntry('', 'file')}><Icon name="file" size={14} /></button><button title="New folder" onClick={() => void createEntry('', 'directory')}><Icon name="folder" size={14} /></button><button title="Import text or code files" onClick={() => void importFiles('')}><Icon name="arrow-right" size={14} /></button></>}<button title="Refresh" onClick={() => void refreshTree()}><Icon name="refresh" size={14} /></button></div></header>
+          {activity === 'explorer' && <><div className="workspace-label"><Icon name="chevron-down" size={11} /><strong>{workspace.name}</strong></div><FileTree nodes={tree} activePath={activePath ?? undefined} onOpen={(path) => void openFile(path)} onCreate={(parent, kind) => void createEntry(parent, kind)} onImport={(parent) => void importFiles(parent)} onRename={(node) => void renameEntry(node)} onDelete={(node) => void deleteEntry(node)} /></>}
           {activity === 'search' && <SearchPanel onOpen={(match: SearchMatch) => void openFile(match.path, match)} />}
           {activity === 'source' && <div className="source-summary"><span><Icon name="branch" size={18} /></span><h3>{git.isRepository ? git.branch : 'No Git repository'}</h3><p>{git.isRepository ? `${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}` : 'Initialize Git from the integrated terminal to begin tracking this workspace.'}</p></div>}
         </aside>}
@@ -254,7 +292,7 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
         <Suspense fallback={<ModuleLoading label="Loading editor…" />}><EditorWorkspace documents={documents} activePath={activePath} theme={preferences.theme} settings={preferences.editor} reveal={reveal} onActivate={setActivePath} onClose={closeDocument} onChange={changeDocument} onSave={(path) => void saveFile(path)} onCursor={(line, column) => setCursor({ line, column })} onSelection={setSelectedCode} onRun={() => runProject('npm run dev', 'development')} onToggleSidebar={() => setLeftVisible((value) => !value)} /></Suspense>
 
         {rightVisible && <div className="resizer resizer--vertical" onPointerDown={startHorizontalDrag('right')} />}
-        {rightVisible && <Suspense fallback={<ModuleLoading label="Loading Aether AI…" />}><AIPanel preferences={preferences.ai} activeDocument={activeDocument} selectedCode={selectedCode} projectFiles={projectFiles} terminalOutput={terminalOutput} onClose={() => setRightVisible(false)} onInsert={(code) => { if (activePath) changeDocument(activePath, `${activeDocument?.value ?? ''}\n${code}\n`); }} /></Suspense>}
+        {rightVisible && <Suspense fallback={<ModuleLoading label="Loading Aether AI…" />}><AIPanel preferences={preferences.ai} activeDocument={activeDocument} selectedCode={selectedCode} projectFiles={projectFiles} terminalOutput={terminalOutput} onClose={() => setRightVisible(false)} onInsert={(code) => { if (activePath) changeDocument(activePath, `${activeDocument?.value ?? ''}\n${code}\n`); }} onApplyFileChanges={applyAIFileChanges} /></Suspense>}
 
         {bottomVisible && <div className="resizer resizer--horizontal" onPointerDown={startVerticalDrag} />}
         {bottomVisible && <Suspense fallback={<ModuleLoading label="Starting terminal…" />}><TerminalPanel settings={preferences.terminal} theme={preferences.theme} onClosePanel={() => setBottomVisible(false)} onOutput={handleTerminalOutput} /></Suspense>}

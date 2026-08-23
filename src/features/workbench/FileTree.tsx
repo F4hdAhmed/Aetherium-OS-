@@ -8,6 +8,7 @@ interface FileTreeProps {
   activePath?: string;
   onOpen(path: string): void;
   onCreate(parentPath: string, kind: 'file' | 'directory'): void;
+  onImport(parentPath: string): void;
   onRename(node: FileTreeNode): void;
   onDelete(node: FileTreeNode): void;
 }
@@ -43,7 +44,7 @@ function TreeNode({
   );
 }
 
-export function FileTree({ nodes, activePath, onOpen, onCreate, onRename, onDelete }: FileTreeProps) {
+export function FileTree({ nodes, activePath, onOpen, onCreate, onImport, onRename, onDelete }: FileTreeProps) {
   const [context, setContext] = useState<ContextState | null>(null);
   useEffect(() => {
     const close = () => setContext(null);
@@ -78,6 +79,7 @@ export function FileTree({ nodes, activePath, onOpen, onCreate, onRename, onDele
           {context.node.type === 'directory' && <>
             <button onClick={() => { onCreate(context.node.path, 'file'); setContext(null); }}><Icon name="file" size={14} /> New file</button>
             <button onClick={() => { onCreate(context.node.path, 'directory'); setContext(null); }}><Icon name="folder" size={14} /> New folder</button>
+            <button onClick={() => { onImport(context.node.path); setContext(null); }}><Icon name="arrow-right" size={14} /> Import files</button>
             <span />
           </>}
           {context.node.type === 'file' && <button onClick={() => { onOpen(context.node.path); setContext(null); }}><Icon name="code" size={14} /> Open</button>}
@@ -88,4 +90,3 @@ export function FileTree({ nodes, activePath, onOpen, onCreate, onRename, onDele
     </>
   );
 }
-

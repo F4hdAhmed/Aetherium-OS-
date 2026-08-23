@@ -283,6 +283,40 @@ kbd { font-family: var(--font-ui); font-size: 10px; color: var(--text-muted); }
 .ai-message code { font-family: var(--font-mono); font-size: 9px; user-select: text; }
 .ai-message--user { margin: 7px 0; padding: 11px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--bg-base); }
 .ai-message--user > header { height: 16px; }
+.ai-file-plan {
+  margin: 12px 0 2px;
+  overflow: hidden;
+  border: 1px solid rgba(155,140,255,.22);
+  border-radius: 9px;
+  background: linear-gradient(155deg, rgba(155,140,255,.07), rgba(84,217,255,.025));
+}
+.ai-file-plan > header {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(155,140,255,.14);
+  color: #c7c0ff;
+  font-size: 8px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.ai-file-plan > header span, .ai-file-plan > div > span, .ai-file-plan > footer > span { display: flex; align-items: center; gap: 6px; }
+.ai-file-plan > header small { color: var(--text-muted); font-size: 7px; }
+.ai-file-plan > div { max-height: 150px; overflow: auto; padding: 5px; }
+.ai-file-plan > div > span { min-width: 0; height: 27px; padding: 0 6px; color: var(--text-secondary); }
+.ai-file-plan > div > span + span { border-top: 1px solid rgba(139,151,187,.07); }
+.ai-file-plan > div code { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-file-plan > div small { color: var(--text-muted); font-size: 7px; white-space: nowrap; }
+.ai-file-plan > footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border-top: 1px solid rgba(155,140,255,.13); color: var(--text-muted); font-size: 7px; }
+.ai-file-plan > footer > div { display: flex; gap: 5px; }
+.ai-file-plan > footer .button { width: auto; height: 25px; padding: 0 9px; font-size: 8px; }
+.ai-file-plan.is-applied { border-color: rgba(89,211,154,.25); background: rgba(89,211,154,.035); }
+.ai-file-plan.is-applied > footer { color: var(--success); }
+.ai-file-plan.is-rejected { opacity: .58; }
+.ai-file-plan.is-failed { border-color: rgba(255,105,135,.24); }
 .ai-starters { display: grid; gap: 6px; margin-top: 18px; }
 .ai-starters button { padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-secondary); background: var(--bg-base); cursor: pointer; font-size: 9px; text-align: left; }
 .ai-starters button:hover { color: var(--text-primary); border-color: var(--border-strong); }

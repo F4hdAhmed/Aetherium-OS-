@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AetheriumDesktopApi,
+  AIFileChange,
   AIRequest,
   AIStreamEvent,
   AppPreferences,
@@ -33,6 +34,8 @@ const api: AetheriumDesktopApi = {
     writeFile: (path: string, content: string) => ipcRenderer.invoke('workspace:write-file', path, content),
     createFile: (parentPath: string, name: string) => ipcRenderer.invoke('workspace:create-file', parentPath, name),
     createFolder: (parentPath: string, name: string) => ipcRenderer.invoke('workspace:create-folder', parentPath, name),
+    importFiles: (parentPath: string) => ipcRenderer.invoke('workspace:import-files', parentPath),
+    applyFileChanges: (changes: AIFileChange[]) => ipcRenderer.invoke('workspace:apply-file-changes', changes),
     rename: (path: string, nextName: string) => ipcRenderer.invoke('workspace:rename', path, nextName),
     delete: (path: string) => ipcRenderer.invoke('workspace:delete', path),
     search: (query: string) => ipcRenderer.invoke('workspace:search', query),

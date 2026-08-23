@@ -29,6 +29,19 @@ test('workspace service performs bounded text-file operations and search', async
   await service.writeFile(path.join('src', 'new.ts'), 'const value = 42;\n');
   await service.rename(path.join('src', 'new.ts'), 'renamed.ts');
   assert.equal((await service.readFile(path.join('src', 'renamed.ts'))).content, 'const value = 42;\n');
+
+  await fs.writeFile(path.join(root, 'import-me.py'), 'print("imported")\n', 'utf8');
+  const imported = await service.importFiles('src', [path.join(root, 'import-me.py')]);
+  assert.deepEqual(imported.imported, [path.join('src', 'import-me.py')]);
+  assert.equal((await service.readFile(path.join('src', 'import-me.py'))).language, 'python');
+
+  await service.applyFileChanges([
+    { path: 'src/generated/component.tsx', content: 'export function Generated() { return null; }\n' },
+    { path: 'src/renamed.ts', content: 'export const value = 84;\n' },
+  ]);
+  assert.match((await service.readFile(path.join('src', 'generated', 'component.tsx'))).content, /Generated/);
+  assert.match((await service.readFile(path.join('src', 'renamed.ts'))).content, /84/);
+  await assert.rejects(() => service.applyFileChanges([{ path: '.git/config', content: 'unsafe' }]), /cannot write inside/i);
 });
 
 test('workspace service rejects paths outside the active root', async (context) => {
@@ -42,4 +55,3 @@ test('workspace service rejects paths outside the active root', async (context) 
   await assert.rejects(() => service.readFile(path.join('..', 'outside.txt')), /outside the active workspace/i);
   assert.throws(() => service.resolveSafe(path.resolve(root, 'absolute.txt')), /absolute paths/i);
 });
-

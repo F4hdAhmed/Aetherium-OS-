@@ -38,6 +38,8 @@ export interface AppPreferences {
 }
 
 export interface FileContent { path: string; content: string; language: string; size: number }
+export interface ImportedFilesResult { tree: FileTreeNode[]; imported: string[] }
+export interface AIFileChange { path: string; content: string }
 export interface SearchMatch { path: string; line: number; column: number; preview: string }
 export interface GitSummary { isRepository: boolean; branch: string | null; changedFiles: number }
 export interface TerminalSessionInfo { id: string; name: string; cwd: string }
@@ -78,6 +80,8 @@ export interface AetheriumDesktopApi {
     writeFile(path: string, content: string): Promise<void>;
     createFile(parentPath: string, name: string): Promise<FileTreeNode[]>;
     createFolder(parentPath: string, name: string): Promise<FileTreeNode[]>;
+    importFiles(parentPath: string): Promise<ImportedFilesResult | null>;
+    applyFileChanges(changes: AIFileChange[]): Promise<FileTreeNode[]>;
     rename(path: string, nextName: string): Promise<FileTreeNode[]>;
     delete(path: string): Promise<FileTreeNode[]>;
     search(query: string): Promise<SearchMatch[]>;

@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AIRequest, AppPreferences } from '../src/types/contracts.js';
+import type { AIFileChange, AIRequest, AppPreferences } from '../src/types/contracts.js';
 import { DEFAULT_PREFERENCES, normalizePreferences } from '../src/state/preferences.js';
 import { AIService } from './services/ai-service.js';
 import { TerminalService } from './services/terminal-service.js';
@@ -72,6 +72,18 @@ function registerIpcHandlers() {
   ipcMain.handle('workspace:write-file', (_event, relativePath: string, content: string) => workspace.writeFile(relativePath, content));
   ipcMain.handle('workspace:create-file', (_event, parentPath: string, name: string) => workspace.create(parentPath, name, 'file'));
   ipcMain.handle('workspace:create-folder', (_event, parentPath: string, name: string) => workspace.create(parentPath, name, 'directory'));
+  ipcMain.handle('workspace:import-files', async (_event, parentPath: string) => {
+    const selection = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Import text or code files into Aetherium',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Text and code files', extensions: ['txt', 'md', 'js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'json', 'css', 'scss', 'html', 'py', 'java', 'cs', 'cpp', 'c', 'h', 'rs', 'go', 'php', 'rb', 'xml', 'yaml', 'yml', 'sql', 'sh', 'ps1', 'bat', 'vue', 'svelte', 'toml', 'ini', 'env'] },
+        { name: 'All files', extensions: ['*'] },
+      ],
+    });
+    return selection.canceled ? null : workspace.importFiles(parentPath, selection.filePaths);
+  });
+  ipcMain.handle('workspace:apply-file-changes', (_event, changes: AIFileChange[]) => workspace.applyFileChanges(changes));
   ipcMain.handle('workspace:rename', (_event, relativePath: string, nextName: string) => workspace.rename(relativePath, nextName));
   ipcMain.handle('workspace:delete', async (_event, relativePath: string) => {
     await shell.trashItem(workspace.resolveSafe(relativePath));

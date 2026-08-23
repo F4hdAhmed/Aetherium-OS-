@@ -20,12 +20,14 @@
 
 Aetherium OS brings project navigation, professional code editing, terminal sessions, search, Git awareness, persistent settings, and contextual AI assistance into one premium desktop workspace.
 
-### Included in v0.1.0
+### Included in v0.1.1
 
 - Monaco code editor with local language workers
 - Workspace explorer and project-wide search
+- In-app creation and multi-file import for text and code files
 - Integrated terminal and run/build controls
 - Aether AI powered by the Gemini streaming Interactions API
+- Reviewable Aether multi-file plans with explicit Apply and Reject controls
 - Active-file, selection, project-map, and terminal context controls
 - Git branch and change status
 - Command palette, keyboard shortcuts, themes, and persistent preferences
@@ -35,7 +37,7 @@ Aetherium OS brings project navigation, professional code editing, terminal sess
 
 Download the Windows x64 installer from [GitHub Releases](https://github.com/F4hdAhmed/Aetherium-OS-/releases).
 
-> The v0.1.0 installer is not code-signed yet. Windows SmartScreen may show an “Unknown publisher” warning.
+> The v0.1.1 installer is not code-signed yet. Windows SmartScreen may show an “Unknown publisher” warning.
 
 ## Gemini configuration
 
