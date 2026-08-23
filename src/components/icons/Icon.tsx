@@ -25,7 +25,8 @@ export type IconName =
   | 'code'
   | 'panel'
   | 'arrow-right'
-  | 'check';
+  | 'check'
+  | 'heart';
 
 const paths: Record<IconName, React.ReactNode> = {
   aetherium: <><path d="M12 2 4 6.6v8.8L12 20l8-4.6V6.6L12 2Z"/><path d="m8.2 14.8 3.8-8 3.8 8M9.4 12.2h5.2"/></>,
@@ -53,6 +54,7 @@ const paths: Record<IconName, React.ReactNode> = {
   panel: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16"/></>,
   'arrow-right': <path d="M5 12h14M14 7l5 5-5 5"/>,
   check: <path d="m5 12 4 4L19 6"/>,
+  heart: <path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z"/>,
 };
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -78,4 +80,3 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     </svg>
   );
 }
-

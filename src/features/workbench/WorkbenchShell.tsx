@@ -19,6 +19,7 @@ interface WorkbenchShellProps {
   onPreferencesChange(preferences: AppPreferences): void;
   onOpenFolder(): void;
   onNotify(message: string, kind?: 'error' | 'info'): void;
+  onSupport(): void;
 }
 
 const activities: { id: Activity | 'ai'; icon: IconName; label: string }[] = [
@@ -28,7 +29,7 @@ const activities: { id: Activity | 'ai'; icon: IconName; label: string }[] = [
   { id: 'ai', icon: 'sparkles', label: 'Aether AI' },
 ];
 
-export function WorkbenchShell({ workspace, preferences, onPreferencesChange, onOpenFolder, onNotify }: WorkbenchShellProps) {
+export function WorkbenchShell({ workspace, preferences, onPreferencesChange, onOpenFolder, onNotify, onSupport }: WorkbenchShellProps) {
   const [tree, setTree] = useState(workspace.tree);
   const [documents, setDocuments] = useState<EditorDocument[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -300,7 +301,7 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
         <footer className="status-bar">
           <div><span><Icon name="branch" size={12} /> {git.branch ?? 'no repository'}</span><span>{git.changedFiles} changes</span></div>
           <span className="status-bar__signature">Aetherium <i /> Fahd Ahmed</span>
-          <div><button onClick={() => setBottomVisible((value) => !value)}><Icon name="terminal" size={12} /> Terminal</button><span>{activeDocument?.language ?? 'Plain Text'}</span><span>Ln {cursor.line}, Col {cursor.column}</span><span>UTF-8</span><Icon name="bell" size={13} /></div>
+          <div><button onClick={onSupport} title="Support Aetherium"><Icon name="heart" size={11} /> Support</button><button onClick={() => setBottomVisible((value) => !value)}><Icon name="terminal" size={12} /> Terminal</button><span>{activeDocument?.language ?? 'Plain Text'}</span><span>Ln {cursor.line}, Col {cursor.column}</span><span>UTF-8</span><Icon name="bell" size={13} /></div>
         </footer>
       </main>
       <Suspense fallback={null}><SettingsDialog open={settingsOpen} preferences={preferences} onChange={onPreferencesChange} onClose={() => setSettingsOpen(false)} /></Suspense>

@@ -150,6 +150,14 @@ async function createWindow() {
         `);
         await new Promise((resolve) => setTimeout(resolve, 1400));
       }
+      if (process.env.AETHERIUM_CAPTURE_SUPPORT) {
+        await mainWindow.webContents.executeJavaScript(`
+          Array.from(document.querySelectorAll('button'))
+            .find((element) => element.textContent?.trim() === 'Support')
+            ?.click();
+        `);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
       const image = await mainWindow.webContents.capturePage();
       await fs.mkdir(path.dirname(capturePath), { recursive: true });
       await fs.writeFile(capturePath, image.toPNG());

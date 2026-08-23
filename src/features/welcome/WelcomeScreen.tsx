@@ -9,9 +9,10 @@ interface WelcomeScreenProps {
   onCreateProject(): void;
   onOpenRecent(path: string): void;
   onOpenCommandPalette(): void;
+  onSupport(): void;
 }
 
-export function WelcomeScreen({ recentWorkspaces, busy, onOpenFolder, onCreateProject, onOpenRecent, onOpenCommandPalette }: WelcomeScreenProps) {
+export function WelcomeScreen({ recentWorkspaces, busy, onOpenFolder, onCreateProject, onOpenRecent, onOpenCommandPalette, onSupport }: WelcomeScreenProps) {
   return (
     <main className="welcome">
       <div className="welcome__ambient welcome__ambient--one" />
@@ -40,6 +41,7 @@ export function WelcomeScreen({ recentWorkspaces, busy, onOpenFolder, onCreatePr
           </Button>
           <Button icon="plus" onClick={onCreateProject} disabled={busy}>Create project</Button>
           <Button icon="command" onClick={onOpenCommandPalette}>Explore commands</Button>
+          <Button icon="heart" onClick={onSupport}>Support</Button>
         </div>
         <p className="welcome__hint"><kbd>CTRL</kbd><span>+</span><kbd>O</kbd><span>OPEN WORKSPACE</span><b /><kbd>CTRL</kbd><span>+</span><kbd>SHIFT</kbd><span>+</span><kbd>P</kbd><span>COMMANDS</span></p>
       </section>
@@ -82,7 +84,7 @@ export function WelcomeScreen({ recentWorkspaces, busy, onOpenFolder, onCreatePr
 
       <footer className="welcome__footer">
         <span className="welcome__coordinates">AETH / 00.01</span>
-        <span className="welcome__version">AETHERIUM OS · DEVELOPER PREVIEW</span>
+        <span className="welcome__version">AETHERIUM OS · CREATED BY FAHD AHMED</span>
         <span className="welcome__status"><i /> ALL SYSTEMS NOMINAL</span>
       </footer>
     </main>

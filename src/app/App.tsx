@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../components/icons/Icon';
 import { CommandPalette, type AppCommand } from '../features/commands/CommandPalette';
+import { DonationDialog } from '../features/donations/DonationDialog';
 import { StartupScreen } from '../features/startup/StartupScreen';
 import { Titlebar } from '../features/titlebar/Titlebar';
 import { WelcomeScreen } from '../features/welcome/WelcomeScreen';
@@ -24,6 +25,7 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [donationOpen, setDonationOpen] = useState(false);
 
   const notify = useCallback((message: string, kind: Notice['kind'] = 'info') => {
     const next = { id: Date.now(), message, kind };
@@ -116,6 +118,7 @@ export function App() {
     { id: 'workspace.open', label: 'Open Folder', category: 'Workspace', shortcut: 'Ctrl O', icon: 'folder', run: () => void openFolder() },
     { id: 'workspace.create', label: 'Create Project', category: 'Workspace', icon: 'plus', run: () => void createProject() },
     { id: 'appearance.theme', label: `Use ${preferences.theme === 'dark' ? 'Light' : 'Dark'} Theme`, category: 'Appearance', icon: preferences.theme === 'dark' ? 'sun' : 'moon', run: toggleTheme },
+    { id: 'support.donate', label: 'Support Aetherium', category: 'Aetherium', icon: 'heart', run: () => setDonationOpen(true) },
     ...(workspace ? [
       { id: 'file.quick-open', label: 'Quick Open', category: 'File', shortcut: 'Ctrl P', icon: 'search' as const, run: () => dispatchWorkbenchCommand('quick-open') },
       { id: 'file.save', label: 'Save', category: 'File', shortcut: 'Ctrl S', icon: 'file' as const, run: () => dispatchWorkbenchCommand('save') },
@@ -141,6 +144,7 @@ export function App() {
         void openFolder();
       } else if (event.key === 'Escape') {
         setPaletteOpen(false);
+        setDonationOpen(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -169,12 +173,14 @@ export function App() {
             onPreferencesChange={persistPreferences}
             onOpenFolder={() => void openFolder()}
             onNotify={notify}
+            onSupport={() => setDonationOpen(true)}
           />
         ) : (
-          <WelcomeScreen recentWorkspaces={preferences.recentWorkspaces} busy={busy} onOpenFolder={() => void openFolder()} onCreateProject={() => void createProject()} onOpenRecent={(path) => void openRecent(path)} onOpenCommandPalette={() => setPaletteOpen(true)} />
+          <WelcomeScreen recentWorkspaces={preferences.recentWorkspaces} busy={busy} onOpenFolder={() => void openFolder()} onCreateProject={() => void createProject()} onOpenRecent={(path) => void openRecent(path)} onOpenCommandPalette={() => setPaletteOpen(true)} onSupport={() => setDonationOpen(true)} />
         )}
       </div>
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
+      <DonationDialog open={donationOpen} onClose={() => setDonationOpen(false)} />
       {notice && <div className={`toast toast--${notice.kind}`} role="status"><Icon name={notice.kind === 'error' ? 'close' : 'check'} size={15} /><span>{notice.message}</span><button onClick={() => setNotice(null)} aria-label="Dismiss"><Icon name="close" size={13} /></button></div>}
       {startupVisible && <StartupScreen leaving={startupLeaving} />}
     </div>
