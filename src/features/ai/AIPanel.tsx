@@ -99,6 +99,7 @@ export function AIPanel({ preferences, activeDocument, selectedCode, projectFile
           <div className="ai-starters">
             <button onClick={() => setInput('Explain the active file and its architecture.')}><Icon name="code" size={13} /><span>Explain this file<small>Map its architecture and intent</small></span><Icon name="chevron-right" size={12} /></button>
             <button onClick={() => setInput('Review the selected code for bugs and suggest a fix.')}><Icon name="search" size={13} /><span>Review selection<small>Find bugs and improvements</small></span><Icon name="chevron-right" size={12} /></button>
+            <button onClick={() => setInput('Create the project files needed for this feature. Propose complete files as an Aetherium file plan so I can review and apply them.')}><Icon name="files" size={13} /><span>Create project files<small>Review, then apply files safely</small></span><Icon name="chevron-right" size={12} /></button>
             <button onClick={() => setInput('Suggest the next implementation step for this project.')}><Icon name="arrow-right" size={13} /><span>Plan next step<small>Turn context into momentum</small></span><Icon name="chevron-right" size={12} /></button>
           </div>
         </div>}
@@ -132,7 +133,7 @@ export function AIPanel({ preferences, activeDocument, selectedCode, projectFile
         </div>
         <textarea
           aria-label="Ask Aether AI"
-          placeholder="Ask Aether to explain, debug, build…"
+          placeholder="Ask Aether to explain, debug, or create project files…"
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
@@ -140,7 +141,7 @@ export function AIPanel({ preferences, activeDocument, selectedCode, projectFile
           }}
         />
         <div>
-          <span><Icon name="sparkles" size={10} /> Context stays explicit</span>
+          <span><Icon name="sparkles" size={10} /> File changes always require approval</span>
           <button className={streamingId ? 'is-streaming' : ''} onClick={() => streamingId ? void stop() : void send()} disabled={!streamingId && !input.trim()} title={streamingId ? 'Stop response' : 'Send to Aether'}><Icon name={streamingId ? 'close' : 'arrow-right'} size={15} /></button>
         </div>
       </div>

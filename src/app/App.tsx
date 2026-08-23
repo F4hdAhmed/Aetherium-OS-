@@ -26,6 +26,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [donationOpen, setDonationOpen] = useState(false);
+  const [projectDraft, setProjectDraft] = useState<string | null>(null);
 
   const notify = useCallback((message: string, kind: Notice['kind'] = 'info') => {
     const next = { id: Date.now(), message, kind };
@@ -100,13 +101,13 @@ export function App() {
       setBusy(false);
     }
   }, [acceptWorkspace, notify]);
-  const createProject = useCallback(async () => {
-    const name = window.prompt('Project name');
-    if (!name) return;
+  const createProject = useCallback(async (name: string) => {
+    if (!name.trim()) return;
     setBusy(true);
     try {
       const nextWorkspace = await desktop.workspace.createProject(name);
       if (nextWorkspace) acceptWorkspace(nextWorkspace);
+      setProjectDraft(null);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Aetherium could not create that project.', 'error');
     } finally {
@@ -116,7 +117,7 @@ export function App() {
 
   const commands = useMemo<AppCommand[]>(() => [
     { id: 'workspace.open', label: 'Open Folder', category: 'Workspace', shortcut: 'Ctrl O', icon: 'folder', run: () => void openFolder() },
-    { id: 'workspace.create', label: 'Create Project', category: 'Workspace', icon: 'plus', run: () => void createProject() },
+    { id: 'workspace.create', label: 'Create Project', category: 'Workspace', icon: 'plus', run: () => setProjectDraft('aetherium-project') },
     { id: 'appearance.theme', label: `Use ${preferences.theme === 'dark' ? 'Light' : 'Dark'} Theme`, category: 'Appearance', icon: preferences.theme === 'dark' ? 'sun' : 'moon', run: toggleTheme },
     { id: 'support.donate', label: 'Support Aetherium', category: 'Aetherium', icon: 'heart', run: () => setDonationOpen(true) },
     ...(workspace ? [
@@ -131,7 +132,7 @@ export function App() {
       { id: 'preferences.open', label: 'Open Settings', category: 'Preferences', icon: 'settings' as const, run: () => dispatchWorkbenchCommand('settings') },
       { id: 'workspace.close', label: 'Close Workspace', category: 'Workspace', icon: 'close' as const, run: () => setWorkspace(null) },
     ] : []),
-  ], [createProject, openFolder, preferences.theme, toggleTheme, workspace]);
+  ], [openFolder, preferences.theme, toggleTheme, workspace]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -145,6 +146,7 @@ export function App() {
       } else if (event.key === 'Escape') {
         setPaletteOpen(false);
         setDonationOpen(false);
+        setProjectDraft(null);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -176,11 +178,12 @@ export function App() {
             onSupport={() => setDonationOpen(true)}
           />
         ) : (
-          <WelcomeScreen recentWorkspaces={preferences.recentWorkspaces} busy={busy} onOpenFolder={() => void openFolder()} onCreateProject={() => void createProject()} onOpenRecent={(path) => void openRecent(path)} onOpenCommandPalette={() => setPaletteOpen(true)} onSupport={() => setDonationOpen(true)} />
+          <WelcomeScreen recentWorkspaces={preferences.recentWorkspaces} busy={busy} onOpenFolder={() => void openFolder()} onCreateProject={() => setProjectDraft('aetherium-project')} onOpenRecent={(path) => void openRecent(path)} onOpenCommandPalette={() => setPaletteOpen(true)} onSupport={() => setDonationOpen(true)} />
         )}
       </div>
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
       <DonationDialog open={donationOpen} onClose={() => setDonationOpen(false)} />
+      <ProjectDialog name={projectDraft} busy={busy} onChange={setProjectDraft} onClose={() => setProjectDraft(null)} onCreate={(name) => void createProject(name)} />
       {notice && <div className={`toast toast--${notice.kind}`} role="status"><Icon name={notice.kind === 'error' ? 'close' : 'check'} size={15} /><span>{notice.message}</span><button onClick={() => setNotice(null)} aria-label="Dismiss"><Icon name="close" size={13} /></button></div>}
       {startupVisible && <StartupScreen leaving={startupLeaving} />}
     </div>
@@ -189,4 +192,13 @@ export function App() {
 
 function dispatchWorkbenchCommand(command: string) {
   window.dispatchEvent(new CustomEvent('aetherium:command', { detail: command }));
+}
+
+function ProjectDialog({ name, busy, onChange, onClose, onCreate }: { name: string | null; busy: boolean; onChange(name: string): void; onClose(): void; onCreate(name: string): void }) {
+  if (name === null) return null;
+  return <div className="modal-layer entry-layer" onMouseDown={onClose}><form className="entry-dialog project-dialog" onSubmit={(event) => { event.preventDefault(); onCreate(name); }} onMouseDown={(event) => event.stopPropagation()}>
+    <header><div><span><Icon name="plus" size={17} /></span><div><p className="eyebrow">New workspace</p><h2>Create project</h2></div></div><button type="button" onClick={onClose} aria-label="Close"><Icon name="close" size={15} /></button></header>
+    <main><label><span>Project name</span><input autoFocus value={name} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }} placeholder="my-aetherium-project" /></label><p>After you continue, choose the parent folder where Aetherium should create this project.</p></main>
+    <footer><button type="button" className="button button--ghost" onClick={onClose}>Cancel</button><button type="submit" className="button button--primary" disabled={busy || !name.trim()}>{busy ? 'Creating…' : 'Choose location'}</button></footer>
+  </form></div>;
 }

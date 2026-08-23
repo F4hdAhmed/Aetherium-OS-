@@ -12,6 +12,13 @@ const TerminalPanel = lazy(() => import('../terminal/TerminalPanel').then((modul
 const SettingsDialog = lazy(() => import('../settings/SettingsDialog').then((module) => ({ default: module.SettingsDialog })));
 
 type Activity = 'explorer' | 'search' | 'source';
+interface EntryDialogState {
+  action: 'create' | 'rename';
+  parentPath: string;
+  kind: 'file' | 'directory';
+  name: string;
+  node?: FileTreeNode;
+}
 
 interface WorkbenchShellProps {
   workspace: WorkspaceInfo;
@@ -42,6 +49,7 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
   const [bottomVisible, setBottomVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [entryDialog, setEntryDialog] = useState<EntryDialogState | null>(null);
   const [reveal, setReveal] = useState<{ path: string; line: number; column: number; nonce: number } | null>(null);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [selectedCode, setSelectedCode] = useState('');
@@ -121,15 +129,34 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
     if (activePath === path) setActivePath(remaining[Math.min(index, remaining.length - 1)]?.path ?? null);
   };
 
-  const createEntry = async (parentPath: string, kind: 'file' | 'directory') => {
-    const name = window.prompt(kind === 'file' ? 'New file name (include any code extension, such as app.tsx or main.py)' : 'New folder name');
-    if (!name) return;
+  const createEntry = (parentPath: string, kind: 'file' | 'directory') => {
+    setEntryDialog({ action: 'create', parentPath, kind, name: kind === 'file' ? 'untitled.txt' : 'new-folder' });
+  };
+
+  const submitEntry = async () => {
+    if (!entryDialog?.name.trim()) return;
     try {
-      const nextTree = kind === 'file'
-        ? await desktop.workspace.createFile(parentPath, name)
-        : await desktop.workspace.createFolder(parentPath, name);
-      setTree(nextTree);
-      if (kind === 'file') void openFile([parentPath, name].filter(Boolean).join('\\'));
+      if (entryDialog.action === 'rename' && entryDialog.node) {
+        const node = entryDialog.node;
+        const nextName = entryDialog.name.trim();
+        if (nextName === node.name) { setEntryDialog(null); return; }
+        setTree(await desktop.workspace.rename(node.path, nextName));
+        const prefix = node.path.replace(/[^\\/]+$/, '');
+        const nextPath = `${prefix}${nextName}`;
+        setDocuments((current) => current.map((document) => {
+          if (document.path === node.path || document.path.startsWith(`${node.path}\\`)) return { ...document, path: `${nextPath}${document.path.slice(node.path.length)}` };
+          return document;
+        }));
+        if (activePath === node.path || activePath?.startsWith(`${node.path}\\`)) setActivePath(`${nextPath}${activePath.slice(node.path.length)}`);
+      } else {
+        const name = entryDialog.name.trim();
+        const nextTree = entryDialog.kind === 'file'
+          ? await desktop.workspace.createFile(entryDialog.parentPath, name)
+          : await desktop.workspace.createFolder(entryDialog.parentPath, name);
+        setTree(nextTree);
+        if (entryDialog.kind === 'file') await openFile([entryDialog.parentPath, name].filter(Boolean).join('\\'));
+      }
+      setEntryDialog(null);
     } catch (error) { onNotify(error instanceof Error ? error.message : String(error), 'error'); }
   };
 
@@ -171,19 +198,8 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
     }
   };
 
-  const renameEntry = async (node: FileTreeNode) => {
-    const nextName = window.prompt('Rename to', node.name);
-    if (!nextName || nextName === node.name) return;
-    try {
-      setTree(await desktop.workspace.rename(node.path, nextName));
-      const prefix = node.path.replace(/[^\\/]+$/, '');
-      const nextPath = `${prefix}${nextName}`;
-      setDocuments((current) => current.map((document) => {
-        if (document.path === node.path || document.path.startsWith(`${node.path}\\`)) return { ...document, path: `${nextPath}${document.path.slice(node.path.length)}` };
-        return document;
-      }));
-      if (activePath === node.path || activePath?.startsWith(`${node.path}\\`)) setActivePath(`${nextPath}${activePath.slice(node.path.length)}`);
-    } catch (error) { onNotify(error instanceof Error ? error.message : String(error), 'error'); }
+  const renameEntry = (node: FileTreeNode) => {
+    setEntryDialog({ action: 'rename', parentPath: '', kind: node.type, name: node.name, node });
   };
 
   const deleteEntry = async (node: FileTreeNode) => {
@@ -283,8 +299,8 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
         </nav>
 
         {leftVisible && <aside className="side-panel">
-          <header className="panel-header"><span>{activity === 'source' ? 'Source control' : activity}</span><div>{activity === 'explorer' && <><button title="New file" onClick={() => void createEntry('', 'file')}><Icon name="file" size={14} /></button><button title="New folder" onClick={() => void createEntry('', 'directory')}><Icon name="folder" size={14} /></button><button title="Import text or code files" onClick={() => void importFiles('')}><Icon name="arrow-right" size={14} /></button></>}<button title="Refresh" onClick={() => void refreshTree()}><Icon name="refresh" size={14} /></button></div></header>
-          {activity === 'explorer' && <><div className="workspace-label"><Icon name="chevron-down" size={11} /><strong>{workspace.name}</strong></div><FileTree nodes={tree} activePath={activePath ?? undefined} onOpen={(path) => void openFile(path)} onCreate={(parent, kind) => void createEntry(parent, kind)} onImport={(parent) => void importFiles(parent)} onRename={(node) => void renameEntry(node)} onDelete={(node) => void deleteEntry(node)} /></>}
+          <header className="panel-header"><span>{activity === 'source' ? 'Source control' : activity}</span><div><button title="Refresh" onClick={() => void refreshTree()}><Icon name="refresh" size={14} /></button></div></header>
+          {activity === 'explorer' && <><div className="workspace-label"><Icon name="chevron-down" size={11} /><strong>{workspace.name}</strong></div><div className="explorer-actions"><button onClick={() => createEntry('', 'file')}><Icon name="file" size={12} /> New file</button><button onClick={() => createEntry('', 'directory')}><Icon name="folder" size={12} /> Folder</button><button onClick={() => void importFiles('')}><Icon name="arrow-right" size={12} /> Import</button></div><FileTree nodes={tree} activePath={activePath ?? undefined} onOpen={(path) => void openFile(path)} onCreate={createEntry} onImport={(parent) => void importFiles(parent)} onRename={renameEntry} onDelete={(node) => void deleteEntry(node)} /></>}
           {activity === 'search' && <SearchPanel onOpen={(match: SearchMatch) => void openFile(match.path, match)} />}
           {activity === 'source' && <div className="source-summary"><span><Icon name="branch" size={18} /></span><h3>{git.isRepository ? git.branch : 'No Git repository'}</h3><p>{git.isRepository ? `${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}` : 'Initialize Git from the integrated terminal to begin tracking this workspace.'}</p></div>}
         </aside>}
@@ -306,12 +322,34 @@ export function WorkbenchShell({ workspace, preferences, onPreferencesChange, on
       </main>
       <Suspense fallback={null}><SettingsDialog open={settingsOpen} preferences={preferences} onChange={onPreferencesChange} onClose={() => setSettingsOpen(false)} /></Suspense>
       <QuickOpen open={quickOpen} files={projectFiles} onClose={() => setQuickOpen(false)} onOpen={(path) => { setQuickOpen(false); void openFile(path); }} />
+      <EntryDialog state={entryDialog} onChange={(name) => setEntryDialog((current) => current ? { ...current, name } : null)} onClose={() => setEntryDialog(null)} onSubmit={() => void submitEntry()} />
     </>
   );
 }
 
 function ModuleLoading({ label }: { label: string }) {
   return <div className="module-loading"><span><Icon name="aetherium" size={20} /></span>{label}</div>;
+}
+
+const filePresets = [
+  ['Text', '.txt'], ['Markdown', '.md'], ['JavaScript', '.js'], ['TypeScript', '.ts'], ['React', '.tsx'],
+  ['Python', '.py'], ['HTML', '.html'], ['CSS', '.css'], ['JSON', '.json'], ['Java', '.java'],
+  ['C++', '.cpp'], ['C#', '.cs'], ['Rust', '.rs'], ['Go', '.go'], ['SQL', '.sql'],
+] as const;
+
+function EntryDialog({ state, onChange, onClose, onSubmit }: { state: EntryDialogState | null; onChange(name: string): void; onClose(): void; onSubmit(): void }) {
+  if (!state) return null;
+  const isFile = state.kind === 'file';
+  const title = state.action === 'rename' ? `Rename ${state.kind}` : `New ${state.kind}`;
+  return <div className="modal-layer entry-layer" onMouseDown={onClose}><form className="entry-dialog" onSubmit={(event) => { event.preventDefault(); onSubmit(); }} onMouseDown={(event) => event.stopPropagation()}>
+    <header><div><span><Icon name={isFile ? 'file' : 'folder'} size={17} /></span><div><p className="eyebrow">Project explorer</p><h2>{title}</h2></div></div><button type="button" onClick={onClose} aria-label="Close"><Icon name="close" size={15} /></button></header>
+    <main>
+      <label><span>{isFile ? 'File name and extension' : 'Folder name'}</span><input autoFocus value={state.name} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }} placeholder={isFile ? 'example.tsx' : 'components'} /></label>
+      {isFile && state.action === 'create' && <section><span>Quick file types</span><div>{filePresets.map(([label, extension]) => <button type="button" key={extension} className={state.name.toLowerCase().endsWith(extension.toLowerCase()) ? 'is-active' : ''} onClick={() => onChange(`untitled${extension}`)}>{label}<small>{extension}</small></button>)}</div></section>}
+      <p>{isFile ? 'Use any text or programming-language extension. The file opens in the editor immediately.' : 'The folder will be created inside the selected project location.'}</p>
+    </main>
+    <footer><button type="button" className="button button--ghost" onClick={onClose}>Cancel</button><button type="submit" className="button button--primary" disabled={!state.name.trim()}>{state.action === 'rename' ? 'Rename' : 'Create'}</button></footer>
+  </form></div>;
 }
 
 function flattenFiles(nodes: FileTreeNode[]): string[] {
