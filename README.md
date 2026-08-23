@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/F4hdAhmed/AetheriumOS-v0.1.0/releases/latest">Download latest release</a>
+  <a href="https://github.com/F4hdAhmed/Aetherium-OS-/releases/latest">Download latest release</a>
   ·
   <a href="#development">Build from source</a>
   ·
@@ -33,7 +33,7 @@ Aetherium OS brings project navigation, professional code editing, terminal sess
 
 ## Download
 
-Download the Windows x64 installer from [GitHub Releases](https://github.com/F4hdAhmed/AetheriumOS-v0.1.0/releases).
+Download the Windows x64 installer from [GitHub Releases](https://github.com/F4hdAhmed/Aetherium-OS-/releases).
 
 > The v0.1.0 installer is not code-signed yet. Windows SmartScreen may show an “Unknown publisher” warning.
 
