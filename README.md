@@ -18,7 +18,7 @@
 
 ## What is Aetherium?
 
-Aetherium OS brings project navigation, professional code editing, terminal sessions, search, Git awareness, persistent settings, and contextual AI assistance into one premium desktop workspace.
+Aetherium OS is not an Operating System but a Code editor Made just for ROBLOX DEVELOPERS For Rojo plugin and more its still WIP but I am working Towards publishing it on NOV 20, 2026
 
 ### Included in v0.1.3
 
